@@ -16,6 +16,10 @@ provider "aws" {
   region = "${var.aws-region}"
 }
 
+data "aws_subnet_ids" "oouve-subnet-id" {
+  vpc_id = "${var.vpc-id}"
+}
+
 resource "aws_s3_bucket" "oouve-cache" {
   bucket = "oouve-cache"
   acl    = "private"
@@ -84,6 +88,7 @@ resource "aws_iam_role_policy" "oouve-codebuild-policy" {
       ],
       "Condition": {
         "StringEquals": {
+          "ec2:Subnet": ["${data.aws_subnet_ids.oouve-subnet-id.ids}"],
           "ec2:AuthorizedService": "codebuild.amazonaws.com"
         }
       }
@@ -133,6 +138,12 @@ resource "aws_codebuild_project" "oouve-code-build" {
     type            = "GITHUB"
     location        = "https://github.com/mitchellh/packer.git"
     git_clone_depth = 1
+  }
+
+  vpc_config {
+    vpc_id             = "${var.vpc-id}"
+    subnets            = "${data.aws_subnet_ids.oouve-subnet-id.ids}"
+    security_group_ids = []
   }
 
   logs_config {
